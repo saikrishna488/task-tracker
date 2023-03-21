@@ -1,40 +1,33 @@
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Tasks from "./components/Tasks";
 import AddTask from "./components/AddTask";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import About from "./components/About";
 
 function App() {
   //show Add task component
-  const [showAddTask,setShowAddTask] = useState(false)
+  const [showAddTask, setShowAddTask] = useState(false);
 
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      text: "sai",
-      day: "Feb 6th",
-      reminder: true,
-    },
-    {
-      id: 2,
-      text: "luffy",
-      day: "Feb 7th",
-      reminder: true,
-    },
-    {
-      id: 3,
-      text: "nami",
-      day: "Feb 8th",
-      reminder: true,
-    },
-    {
-      id: 4,
-      text: "shanks",
-      day: "Feb 9th",
-      reminder: true,
-    },
-  ]);
+  const [tasks, setTasks] = useState([]);
 
-  const deleteTask = (id) => {
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const res = await fetch("http://localhost:5000/tasks");
+      const data = await res.json();
+
+      setTasks(data);
+    };
+    fetchTasks();
+  }, []);
+
+  //delete task
+  const deleteTask = async (id) => {
+    await fetch("http://localhost:5000/tasks/" + id, {
+      method: "DELETE",
+    });
+
     setTasks(
       tasks.filter((val) => {
         return val.id !== id;
@@ -42,30 +35,80 @@ function App() {
     );
   };
 
-  const onToggle = (id)=>{
-    setTasks(tasks.map((task)=>{
-      return task.id === id ? {...task,reminder:!task.reminder} : task
-    }))
-  }
+  const onToggle = async (id) => {
+    const res = await fetch("http://localhost:5000/tasks/" + id);
+    const data = await res.json();
+    const updTask = {
+      ...data,
+      reminder: !data.reminder,
+    };
 
-  const addTask = (task)=>{
-    const id = Math.floor(Math.random()*1000)+1
-    const newTask = {id,...task}
-    setTasks([...tasks,newTask])
-  }
+    const res2 = await fetch("http://localhost:5000/tasks/" + id, {
+      method: "PUT",
+      headers: {
+        "Content-type": "application/json",
+      },
+      body: JSON.stringify(updTask),
+    });
+
+    const data2 = await res2.json();
+
+    setTasks(
+      tasks.map((task) => {
+        return task.id === id ? { ...task, reminder: data2.reminder } : task;
+      })
+    );
+  };
+
+  const addTask = async (task) => {
+    const res = await fetch("http://localhost:5000/tasks", {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json",
+      },
+      body: JSON.stringify(task),
+    });
+    const data = await res.json();
+    setTasks([...tasks, data]);
+    // const id = Math.floor(Math.random()*1000)+1
+    // const newTask = {id,...task}
+    // setTasks([...tasks,newTask])
+  };
 
   return (
-    <>
+    <Router>
       <div className="container">
-        <Header onAdd={()=> setShowAddTask(!showAddTask)} showAddTask={showAddTask} />
-        {showAddTask && <AddTask addTask={addTask} />}
-        {tasks.length > 0 ? (
-          <Tasks tasks={tasks} onDelete={deleteTask} addTask={AddTask} onToggle={onToggle} />
-        ) : (
-          "No Tasks"
-        )}
+        <Header
+          onAdd={() => setShowAddTask(!showAddTask)}
+          showAddTask={showAddTask}
+        />
+
+        <Routes>
+          <Route
+            path="/"
+            exact
+            element={
+              <>
+                {showAddTask && <AddTask addTask={addTask} />}
+                {tasks.length > 0 ? (
+                  <Tasks
+                    tasks={tasks}
+                    onDelete={deleteTask}
+                    addTask={AddTask}
+                    onToggle={onToggle}
+                  />
+                ) : (
+                  "No Tasks"
+                )}
+                <Footer />
+              </>
+            }
+          />
+          <Route path="/about" element={<About />} />
+        </Routes>
+        
       </div>
-    </>
+    </Router>
   );
 }
 
